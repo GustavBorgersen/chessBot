@@ -1,64 +1,35 @@
 using ChessChallenge.API;
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 public class MyBot : IChessBot
 {
-
+    Random rand = new Random();
     public Move Think(Board board, Timer timer)
     {
-        Console.WriteLine("think");
+        //Console.WriteLine("think");
 
-        int currentScore = Evaluate(board);
-        Console.WriteLine(currentScore);
+        //int currentScore = Evaluate(board);
+        //Console.WriteLine(currentScore);
 
-        Tuple<Move, int> bestMove = alphaBeta(board, 6, -int.MaxValue, int.MaxValue); //NegaMax(board, 4);
-        Console.WriteLine("Best score: " + bestMove.Item2);
+        DateTime startTime = DateTime.Now;
+        Tuple<Move, int> bestMove = alphaBeta(board, 5, -int.MaxValue, int.MaxValue); //NegaMax(board, 4);
+        //Console.WriteLine("Found move: " + bestMove.Item1.ToString());
+        //Console.WriteLine("Time taken: " + (DateTime.Now - startTime).TotalMilliseconds);
         return bestMove.Item1;
-    }
-
-    Tuple<Move, int> NegaMax(Board board, int depth)
-    {
-        int best = -int.MaxValue;
-        Move bestMove = new Move();
-        Move[] moves = board.GetLegalMoves();
-        if (depth == 0 || moves.Length == 0)
-        {
-            Tuple<Move, int> ret = new Tuple<Move, int>(bestMove, Evaluate(board));
-            return ret;
-        }
-
-        foreach (Move move in moves)
-        {
-
-            board.MakeMove(move);
-
-            int val = -NegaMax(board, depth - 1).Item2; // Note the minus sign here.
-
-            board.UndoMove(move);
-
-            if (val > best)
-            {
-                best = val;
-                bestMove = move;
-            } 
-        }
-
-        return new Tuple<Move, int>(bestMove, best);
-
     }
 
     private Tuple<Move, int> alphaBeta(Board board, int depth, int a, int b)
     {
         //Console.WriteLine("alphaBeta");
         Move bestMove = new Move();
-        Move[] moves = board.GetLegalMoves();
-        if (depth == 0 || moves.Length == 0)
+        List<Move> moves = GetOrderedMoves(board);
+        if (depth == 0 || moves.Count == 0 || board.IsDraw())
         {
             Tuple<Move, int> ret = new Tuple<Move, int>(bestMove, Evaluate(board));
             return ret;
         }
-
 
         foreach (Move move in moves)
         {
@@ -68,19 +39,29 @@ public class MyBot : IChessBot
 
             if (value >= b)
             {
-                break;
+                return new Tuple<Move, int>(bestMove, b);
             }
             if (value > a)
             {
                 a = value;
                 bestMove = move;
             }
-
-            
         }
 
         return new Tuple<Move, int>(bestMove, a);
+    }
 
+    private List<Move> GetOrderedMoves(Board board)
+    {
+        List<Move> moves = board.GetLegalMoves().ToList();
+        moves = moves.OrderByDescending(m => m.IsCapture).
+                      ThenByDescending(m => m.IsPromotion).
+                      ThenBy(m => m.MovePieceType).
+                      ToList();
+
+        
+
+        return moves;
     }
 
     private int Evaluate(Board board)
@@ -94,7 +75,7 @@ public class MyBot : IChessBot
                     (pieceLists[4].Count - pieceLists[10].Count) * 9 +
                     (pieceLists[5].Count - pieceLists[11].Count) * 100000;
 
-        if (board.IsWhiteToMove == false) 
+        if (board.IsWhiteToMove == false)
         {
             score = -score;
         }
@@ -102,5 +83,5 @@ public class MyBot : IChessBot
         //Console.WriteLine("Score:" + score);
         return score;
     }
-         
+
 }
